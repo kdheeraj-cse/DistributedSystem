@@ -51,10 +51,10 @@ public class ElectionLeader implements Watcher
             System.out.println("i am the leader");
         }else{
             System.out.println(allChildrens.get(0) +" is the leader");
-            String leaderNode = allChildrens.get(0);
-            Stat stat = this.zooKeeper.exists(NAMESPACE+"/"+leaderNode, this);
+            String prevNode = allChildrens.get(allChildrens.indexOf(this.nodeName)-1);
+            Stat stat = this.zooKeeper.exists(NAMESPACE+"/"+prevNode, this);
             if(stat != null){
-                System.out.println("watching node "+leaderNode);
+                System.out.println("watching node "+prevNode);
             }
         }
     }
