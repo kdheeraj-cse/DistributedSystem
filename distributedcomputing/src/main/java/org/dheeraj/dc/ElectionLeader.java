@@ -1,6 +1,7 @@
 package org.dheeraj.dc;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 
 import org.apache.zookeeper.CreateMode;
@@ -21,6 +22,7 @@ public class ElectionLeader implements Watcher
     private static final int TIMEOUT = 500;
     private static final String NAMESPACE = "/election";
     private ZooKeeper zooKeeper;
+    private String nodeName = "";
 
     public static void main( String[] args )
     {
@@ -57,9 +59,22 @@ public class ElectionLeader implements Watcher
 
 
     public void volunteerForLeaderShip() throws KeeperException, InterruptedException{
-        String zNodePrefix = NAMESPACE+"/c_";
-        String zNodeName = this.zooKeeper.create(zNodePrefix, new byte[]{}, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
-        System.out.println("z Node created "+zNodeName);
+        String zNodePrefix = NAMESPACE+"_c";
+        String zNodePath = this.zooKeeper.create(zNodePrefix, new byte[]{}, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
+       
+        System.out.println("z Node created with path "+zNodePath);
+        this.nodeName = zNodePath.substring(zNodePath.lastIndexOf("/")+1);
+        
+        System.out.print("z Node created with "+this.nodeName+", and ");
+
+        List<String> allChildrens = this.zooKeeper.getChildren("/", false);
+        Collections.sort(allChildrens);
+
+        if(allChildrens.get(0).equals(this.nodeName)){
+            System.out.println("i am the leader");
+        }else{
+            System.out.println(allChildrens.get(0) +" is the leader");
+        }
     }
 
     public void getLeaderStatus() throws IllegalStateException, InterruptedException, KeeperException{
