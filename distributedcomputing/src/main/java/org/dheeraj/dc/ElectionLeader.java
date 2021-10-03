@@ -10,6 +10,7 @@ import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.data.Stat;
 
 /**
  * Hello world!
@@ -30,6 +31,7 @@ public class ElectionLeader implements Watcher
         try {
             leader.connectToZookeeperServer();
             leader.volunteerForLeaderShip();
+            leader.electLeader();
             leader.run();
             leader.close();
         } catch (IOException e) {
@@ -39,6 +41,22 @@ public class ElectionLeader implements Watcher
         } catch (KeeperException e) {
             e.printStackTrace();
         };
+    }
+
+    private void electLeader() throws KeeperException, InterruptedException {
+        List<String> allChildrens = this.zooKeeper.getChildren(NAMESPACE, false);
+        Collections.sort(allChildrens);
+
+        if(allChildrens.get(0).equals(this.nodeName)){
+            System.out.println("i am the leader");
+        }else{
+            System.out.println(allChildrens.get(0) +" is the leader");
+            String leaderNode = allChildrens.get(0);
+            Stat stat = this.zooKeeper.exists(NAMESPACE+"/"+leaderNode, this);
+            if(stat != null){
+                System.out.println("watching node "+leaderNode);
+            }
+        }
     }
 
     public void connectToZookeeperServer() throws IOException{
@@ -59,22 +77,11 @@ public class ElectionLeader implements Watcher
 
 
     public void volunteerForLeaderShip() throws KeeperException, InterruptedException{
-        String zNodePrefix = NAMESPACE+"_c";
+        String zNodePrefix = NAMESPACE+"/_c";
         String zNodePath = this.zooKeeper.create(zNodePrefix, new byte[]{}, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
-       
         System.out.println("z Node created with path "+zNodePath);
         this.nodeName = zNodePath.substring(zNodePath.lastIndexOf("/")+1);
-        
         System.out.print("z Node created with "+this.nodeName+", and ");
-
-        List<String> allChildrens = this.zooKeeper.getChildren("/", false);
-        Collections.sort(allChildrens);
-
-        if(allChildrens.get(0).equals(this.nodeName)){
-            System.out.println("i am the leader");
-        }else{
-            System.out.println(allChildrens.get(0) +" is the leader");
-        }
     }
 
     public void getLeaderStatus() throws IllegalStateException, InterruptedException, KeeperException{
@@ -95,6 +102,13 @@ public class ElectionLeader implements Watcher
                     }
                 }
                 break;
+            case NodeDeleted:
+                System.out.println("watched node deleted "+event.getState());
+                try {
+                    electLeader();
+                } catch (KeeperException | InterruptedException e) {
+                    e.printStackTrace();
+                }
             default:
                 break;
         }
